@@ -1,0 +1,179 @@
+--========================================================--
+--                EZZ HUB — FULL COMBINED                --
+--========================================================--
+
+local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/violin-suzutsuki/LinoriaLib/main/Library.lua"))()
+local ThemeManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/violin-suzutsuki/LinoriaLib/main/addons/ThemeManager.lua"))()
+local SaveManager  = loadstring(game:HttpGet("https://raw.githubusercontent.com/violin-suzutsuki/LinoriaLib/main/addons/SaveManager.lua"))()
+
+local Players = game:GetService("Players")
+local LP = Players.LocalPlayer
+local UIS = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
+local W = workspace
+
+--========================================================--
+-- UTIL
+--========================================================--
+local function getHRP()
+	local c = LP.Character
+	return c and c:FindFirstChild("HumanoidRootPart") or nil
+end
+
+--========================================================--
+-- SPAWN SAVE
+--========================================================--
+local FirstSpawn = nil
+LP.CharacterAdded:Connect(function(char)
+	task.wait(0.5)
+	local hrp = char:FindFirstChild("HumanoidRootPart")
+	if hrp and not FirstSpawn then FirstSpawn = hrp.CFrame end
+end)
+
+--========================================================--
+-- WINDOW & TABS
+--========================================================--
+local Window = Library:CreateWindow({ Title = "EZZ HUB", Center = true, AutoShow = true })
+local MainTab = Window:AddTab("Main")
+local MoveTab = Window:AddTab("Movement")
+local TpTab = Window:AddTab("Teleport")
+local SetTab = Window:AddTab("Settings")
+
+local MainBox = MainTab:AddLeftGroupbox("Main")
+local MoveBox = MoveTab:AddLeftGroupbox("Movement")
+local TpBox = TpTab:AddLeftGroupbox("Teleport Tools")
+local SetBox = SetTab:AddLeftGroupbox("Settings")
+
+--========================================================--
+-- MAIN TAB
+--========================================================--
+MainBox:AddButton("Start Adidas Animation", function()
+	loadstring(game:HttpGet("https://raw.githubusercontent.com/kolllooomcj-bit/MCJANIMATION/refs/heads/main/ADIDAS%20COMMUNITY%20MCJ"))()
+	Library:Notify("Adidas Animation Loaded", 2)
+end)
+
+MainBox:AddButton("Reset Character", function() LP:LoadCharacter() end)
+
+MainBox:AddButton("半透明化", function()
+	local char = LP.Character
+	if not char then return end
+	for _, v in pairs(char:GetDescendants()) do
+		if v:IsA("Part") or v:IsA("MeshPart") or v:IsA("Accessory") then
+			pcall(function() v.Transparency = 0.5 end)
+		end
+	end
+	Library:Notify("半透明化完了", 2)
+end)
+
+local KickKey = Enum.KeyCode.V
+MainBox:AddKeyPicker("KickKeyPicker", { Text = "Kick Key", Default = KickKey, NoUI = false, Callback = function(v) KickKey = v end })
+
+local instantSteal = false
+MainBox:AddToggle("InstantSteal", { Text = "Instant Steal", Default = false, Callback = function(v) instantSteal = v end })
+
+--========================================================--
+-- MOVE TAB
+--========================================================--
+local FlyEnabled = false
+local FlySpeed = 60
+local qDist = 4
+local SpinEnabled = false
+local SpinSpeed = 180
+
+MoveBox:AddSlider("QTPDist", { Text = "Q TP Distance", Default = 4, Min = 1, Max = 30, Rounding = 1, Callback = function(v) qDist = v end })
+MoveBox:AddToggle("FlyToggle", { Text = "Fly (F)", Default = false, Callback = function(v) FlyEnabled = v end })
+MoveBox:AddSlider("FlySpeed", { Text = "Fly Speed", Default = FlySpeed, Min = 10, Max = 300, Rounding = 0, Callback = function(v) FlySpeed = v end })
+MoveBox:AddButton("Disappear Body", function()
+	local char = LP.Character
+	if not char then return end
+	for _, v in pairs(char:GetDescendants()) do
+		if v:IsA("Part") or v:IsA("MeshPart") or v:IsA("Accessory") then
+			pcall(function()
+				v.Transparency=1; v.CanCollide=false; v.Velocity=Vector3.new(0,-200,0)
+			end)
+		end
+	end
+	Library:Notify("Body dropped / camera only", 2)
+end)
+MoveBox:AddToggle("SpinToggle", { Text = "Spin", Default = false, Callback = function(v) SpinEnabled = v end })
+MoveBox:AddSlider("SpinSpeed", { Text = "Spin Speed", Default = SpinSpeed, Min = 50, Max = 1000, Rounding = 1, Callback = function(v) SpinSpeed = v end })
+
+-- Fly speed presets
+MoveBox:AddToggle("rot fly", { Text="rot fly (27)", Default=false, Callback=function(v) if v then FlySpeed=27 end end})
+MoveBox:AddToggle("normal", { Text="normal (45)", Default=false, Callback=function(v) if v then FlySpeed=45 end end})
+MoveBox:AddToggle("speed coil", { Text="speed coil (75)", Default=false, Callback=function(v) if v then FlySpeed=75 end end})
+
+--========================================================--
+-- TELEPORT TAB
+--========================================================--
+TpBox:AddButton("Go Base", function()
+	local hrp = getHRP()
+	if not hrp or not FirstSpawn then Library:Notify("Spawn not saved", 2) return end
+	Library:Notify("TP in 2s...", 2)
+	task.delay(2,function() hrp.CFrame = FirstSpawn + Vector3.new(0,3,0) end)
+end)
+
+_G.SAVED_TP = nil
+TpBox:AddButton("Save Location", function()
+	local hrp = getHRP()
+	if hrp then _G.SAVED_TP=hrp.CFrame; Library:Notify("Location Saved",2) end
+end)
+TpBox:AddButton("Load Saved TP", function()
+	local hrp = getHRP()
+	if hrp and _G.SAVED_TP then hrp.CFrame=_G.SAVED_TP else Library:Notify("No saved location",2) end
+end)
+
+--========================================================--
+-- SETTINGS TAB
+--========================================================--
+local antiHitEnabled = false
+SetBox:AddToggle("AntiHit", { Text = "Anti Hit", Default = false, Callback = function(v)
+	antiHitEnabled=v
+	Library:Notify("Anti Hit: "..tostring(v),2)
+end })
+
+SetBox:AddToggle("AntiAFK", { Text = "Anti AFK", Default = false, Callback = function(v)
+	if v then
+		local vu=game:GetService("VirtualUser")
+		LP.Idled:Connect(function() vu:Button2Down(Vector2.new()); task.wait(1); vu:Button2Up(Vector2.new()) end)
+	end
+end })
+
+--========================================================--
+-- EVENTS
+--========================================================--
+RunService.Heartbeat:Connect(function(dt)
+	local char = LP.Character
+	if not char then return end
+	local hrp = getHRP()
+	local cam = W.CurrentCamera
+
+	if FlyEnabled and hrp and cam then hrp.Velocity = cam.CFrame.LookVector * FlySpeed end
+	if SpinEnabled and hrp then hrp.CFrame = hrp.CFrame * CFrame.Angles(0, math.rad(SpinSpeed*dt),0) end
+
+	if LP.Character then
+		local backpack = LP.Backpack
+		local hasBrainrot = (backpack:FindFirstChild("brainrot") ~= nil) or (char:FindFirstChild("brainrot") ~= nil)
+		if instantSteal and hasBrainrot and hrp and _G.SAVED_TP then
+			hrp.CFrame = _G.SAVED_TP + Vector3.new(0,3,0)
+			task.wait(0.8)
+			LP:Kick("Stealed (auto-kick)")
+		end
+	end
+end)
+
+UIS.InputBegan:Connect(function(key,g)
+	if g then return end
+	local hrp = getHRP()
+	if key.KeyCode == Enum.KeyCode.Q and hrp then hrp.CFrame = hrp.CFrame + hrp.CFrame.LookVector*qDist end
+	if key.KeyCode == Enum.KeyCode.F then FlyEnabled = not FlyEnabled; Library:Notify("Fly: "..tostring(FlyEnabled),1) end
+	if key.KeyCode == KickKey then LP:Kick("キックされました") end
+end)
+
+--========================================================--
+-- THEME & SAVE
+--========================================================--
+ThemeManager:SetLibrary(Library)
+SaveManager:SetLibrary(Library)
+SaveManager:BuildConfigSection(SetTab)
+ThemeManager:ApplyToTab(SetTab)
